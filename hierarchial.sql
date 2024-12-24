@@ -1,25 +1,23 @@
-WITH Hierarchy AS (
-    -- Anchor: Start from the top-level node (ParentName is NULL)
+WITH RECURSIVE Hierarchy AS (
+    -- Anchor: Start with the given child
     SELECT 
-        Name,
-        Type,
-        ParentName,
-        1 AS Level
-    FROM HierarchyTable
-    WHERE ParentName IS NULL
+        Name, 
+        Type, 
+        ParentName
+    FROM HierarchyData
+    WHERE Name = 'NodeA1' -- Replace with the child you want to query
 
     UNION ALL
 
-    -- Recursive: Find child nodes
+    -- Recursive: Traverse up the hierarchy
     SELECT 
-        ht.Name,
-        ht.Type,
-        ht.ParentName,
-        h.Level + 1 AS Level
-    FROM HierarchyTable ht
-    INNER JOIN Hierarchy h ON ht.ParentName = h.Name
+        h.Name,
+        h.Type,
+        h.ParentName
+    FROM HierarchyData h
+    INNER JOIN Hierarchy hr ON h.Name = hr.ParentName
 )
-SELECT *
+-- Find the specific type in the hierarchy
+SELECT * 
 FROM Hierarchy
-WHERE Type = 'Type 2' -- Replace 'Type 2' with the desired type
-ORDER BY Level, Name;
+WHERE Type = 'Category'; -- Replace with the desired type
