@@ -10,14 +10,13 @@ public static List<String> reconcile(List<Record> side1, List<Record> side2, dou
         double minDiff = Double.MAX_VALUE;
         Double bestKey = null;
 
-        NavigableMap<Double, Queue<Record>> subMap = side2Map.subMap(s1.amount - variance, true, s1.amount + variance, true);
-
-        for (Map.Entry<Double, Queue<Record>> entry : subMap.entrySet()) {
-            if (!entry.getValue().isEmpty()) {
-                double diff = Math.abs(s1.amount - entry.getKey());
+        for (Map.Entry<Double, Queue<Record>> entry : side2Map.entrySet()) {
+            double key = entry.getKey();
+            if (Math.abs(s1.amount - key) <= variance && !entry.getValue().isEmpty()) {
+                double diff = Math.abs(s1.amount - key);
                 if (diff < minDiff) {
                     minDiff = diff;
-                    bestKey = entry.getKey();
+                    bestKey = key;
                 }
             }
         }
