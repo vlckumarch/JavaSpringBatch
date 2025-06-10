@@ -40,10 +40,8 @@ public class JsonDiffUtil {
 
         else if (oldNode.isArray() && newNode.isArray()) {
             if (arrayHasUuidObjects(oldNode) && arrayHasUuidObjects(newNode)) {
-                // Case 1: Array with uuid → compare by uuid
                 changes.addAll(compareArrayByUuid(oldNode, newNode, path));
             } else {
-                // Case 2: Unordered array → compare as set of object strings
                 changes.addAll(compareArrayAsUnorderedSet(oldNode, newNode, path));
             }
         }
@@ -117,7 +115,6 @@ public class JsonDiffUtil {
             newSet.add(normalizeJson(elem));
         }
 
-        // Elements added
         Set<String> added = new HashSet<>(newSet);
         added.removeAll(oldSet);
         for (String addedElem : added) {
@@ -129,7 +126,6 @@ public class JsonDiffUtil {
             }
         }
 
-        // Elements removed
         Set<String> removed = new HashSet<>(oldSet);
         removed.removeAll(newSet);
         for (String removedElem : removed) {
