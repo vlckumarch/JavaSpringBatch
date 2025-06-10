@@ -1,0 +1,150 @@
+package com.example.jsonaudit;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.*;
+
+public class JsonDiffUtil {
+
+    private static final ObjectMapper mapper = new ObjectMapper();
+
+    public static List<Change> compareJson(JsonNode oldNode, JsonNode newNode, String path) {
+        List<Change> changes = new ArrayList<>();
+
+        if (oldNode == null && newNode == null) {
+            return changes;
+        }
+
+        if (oldNode == null) {
+            changes.add(new Change(path, ChangeType.ADDED, null, newNode));
+            return changes;
+        } else if (newNode == null) {
+            changes.add(new Change(path, ChangeType.REMOVED, oldNode, null));
+            return changes;
+        }
+
+        if (oldNode.isObject() && newNode.isObject()) {
+            Set<String> fieldNames = new HashSet<>();
+            oldNode.fieldNames().forEachRemaining(fieldNames::add);
+            newNode.fieldNames().forEachRemaining(fieldNames::add);
+
+            for (String field : fieldNames) {
+                JsonNode oldValue = oldNode.get(field);
+                JsonNode newValue = newNode.get(field);
+                String currentPath = path.isEmpty() ? field : path + "." + field;
+                changes.addAll(compareJson(oldValue, newValue, currentPath));
+            }
+        }
+
+        else if (oldNode.isArray() && newNode.isArray()) {
+
+            // First: detect order change
+            if (arrayOrderChanged(oldNode, newNode)) {
+                changes.add(new Change(path + "[order changed]", ChangeType.UPDATED, oldNode, newNode));
+            }
+
+            if (arrayHasUuidObjects(oldNode) && arrayHasUuidObjects(newNode)) {
+                changes.addAll(compareArrayByUuid(oldNode, newNode, path));
+            } else {
+                changes.addAll(compareArrayByIndex(oldNode, newNode, path));
+            }
+        }
+
+        else if (!oldNode.equals(newNode)) {
+            changes.add(new Change(path, ChangeType.UPDATED, oldNode, newNode));
+        }
+
+        return changes;
+    }
+
+    private static boolean arrayOrderChanged(JsonNode oldArray, JsonNode newArray) {
+        int oldSize = oldArray.size();
+        int newSize = newArray.size();
+
+        if (oldSize != newSize) {
+            return true;
+        }
+
+        for (int i = 0; i < oldSize; i++) {
+            String oldElemHash = normalizeJson(oldArray.get(i));
+            String newElemHash = normalizeJson(newArray.get(i));
+            if (!oldElemHash.equals(newElemHash)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean arrayHasUuidObjects(JsonNode arrayNode) {
+        if (!arrayNode.isArray() || arrayNode.size() == 0) {
+            return false;
+        }
+        JsonNode first = arrayNode.get(0);
+        return first.isObject() && (first.has("uuid") || first.has("id"));
+    }
+
+    private static Map<String, JsonNode> mapArrayByUuid(JsonNode arrayNode) {
+        Map<String, JsonNode> map = new HashMap<>();
+        for (JsonNode elem : arrayNode) {
+            if (elem.isObject()) {
+                String uuid = elem.has("uuid") ? elem.get("uuid").asText() :
+                              elem.has("id") ? elem.get("id").asText() : null;
+                if (uuid != null) {
+                    map.put(uuid, elem);
+                }
+            }
+        }
+        return map;
+    }
+
+    private static List<Change> compareArrayByUuid(JsonNode oldArray, JsonNode newArray, String path) {
+        List<Change> changes = new ArrayList<>();
+
+        Map<String, JsonNode> oldMap = mapArrayByUuid(oldArray);
+        Map<String, JsonNode> newMap = mapArrayByUuid(newArray);
+
+        Set<String> allUuids = new HashSet<>();
+        allUuids.addAll(oldMap.keySet());
+        allUuids.addAll(newMap.keySet());
+
+        for (String uuid : allUuids) {
+            JsonNode oldElem = oldMap.get(uuid);
+            JsonNode newElem = newMap.get(uuid);
+            String arrayPath = path + "[uuid=" + uuid + "]";
+
+            if (oldElem == null) {
+                changes.add(new Change(arrayPath, ChangeType.ADDED, null, newElem));
+            } else if (newElem == null) {
+                changes.add(new Change(arrayPath, ChangeType.REMOVED, oldElem, null));
+            } else {
+                changes.addAll(compareJson(oldElem, newElem, arrayPath));
+            }
+        }
+
+        return changes;
+    }
+
+    private static List<Change> compareArrayByIndex(JsonNode oldArray, JsonNode newArray, String path) {
+        List<Change> changes = new ArrayList<>();
+
+        int maxSize = Math.max(oldArray.size(), newArray.size());
+        for (int i = 0; i < maxSize; i++) {
+            JsonNode oldElem = i < oldArray.size() ? oldArray.get(i) : null;
+            JsonNode newElem = i < newArray.size() ? newArray.get(i) : null;
+            String arrayPath = path + "[" + i + "]";
+            changes.addAll(compareJson(oldElem, newElem, arrayPath));
+        }
+
+        return changes;
+    }
+
+    private static String normalizeJson(JsonNode node) {
+        try {
+            return mapper.writeValueAsString(node);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize JsonNode", e);
+        }
+    }
+}
