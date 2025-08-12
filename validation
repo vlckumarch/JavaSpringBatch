@@ -1,0 +1,102 @@
+1️⃣ Understand What You’re Getting
+
+You have three files per process:
+
+1. CSV file → likely the raw tabular results (rows of records).
+
+
+2. Avro file → a binary serialization format (commonly used in Hadoop/Spark). This might be a raw data dump, sometimes with schema inside.
+
+
+3. Configuration PDF → human-readable configuration or setup of the process.
+
+
+
+
+---
+
+2️⃣ Verification Steps
+
+Step A – Count and Match Files
+
+List all processes you have in your SaaS account before closure.
+
+For each process, you should receive exactly 3 files (CSV, Avro, PDF).
+
+Check that the number of records in CSV matches Avro for that process.
+
+
+
+---
+
+Step B – Validate CSVs
+
+1. Check row count:
+
+Compare with counts from the SaaS UI/reports before closure.
+
+
+
+2. Check completeness:
+
+Are all expected columns there?
+
+No unexpected null/blank values that should be filled.
+
+
+
+3. Sample Data Cross-Check:
+
+Pick a few known records from the old system and ensure they exist in CSV.
+
+
+
+
+
+---
+
+Step C – Validate Avro Files
+
+Read the Avro schema (Avro files contain schema + data).
+
+Ensure the schema matches your CSV column names/types.
+
+Compare record counts with CSV.
+
+Spot-check a few records to ensure Avro data matches CSV.
+
+
+
+---
+
+Step D – Validate Config PDFs
+
+Confirm all settings match what you had in the SaaS system.
+
+Check for any missing pages or cut-off text.
+
+
+
+---
+
+Step E – Data Integrity Check
+
+If the vendor system had total records count, last update time, and hash checksums, request them.
+
+Ask vendor for record count per table/process before export → match with CSV/Avro counts.
+
+If possible, request hash checksums (e.g., MD5/SHA256) for each export file to ensure no corruption during transfer.
+
+
+
+---
+
+Step F – Spot Cross-Validation
+
+For a few processes:
+
+Pick 5–10 random IDs from CSV.
+
+Search them in Avro dump → ensure matching values.
+
+Match with historical reports/screenshots from your SaaS dashboard.
